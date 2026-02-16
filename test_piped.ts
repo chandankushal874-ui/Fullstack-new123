@@ -1,4 +1,4 @@
-
+export { };
 const VIDEO_ID = 'ZgWrFoaisdk';
 const PIPED_API = `https://api.piped.yt/streams/${VIDEO_ID}`;
 

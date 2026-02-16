@@ -1,4 +1,5 @@
 
+export { };
 const ytdl = require('@distube/ytdl-core');
 
 const VIDEO_URL = 'https://www.youtube.com/watch?v=ZgWrFoaisdk';

@@ -1,5 +1,5 @@
-
-const axios = require('axios');
+export { };
+import axios from 'axios';
 const VIDEO_URL = 'https://www.youtube.com/watch?v=ZgWrFoaisdk';
 
 async function testAxios() {
