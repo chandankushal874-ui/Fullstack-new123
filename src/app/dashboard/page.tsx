@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
+import YouTubeSummarizer from "@/components/YouTubeSummarizer";
 
 export default function DashboardPage() {
     const { data: session } = useSession();
@@ -93,8 +94,14 @@ export default function DashboardPage() {
             <nav className="bg-white shadow">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div className="flex h-16 justify-between">
-                        <div className="flex items-center">
+                        <div className="flex items-center gap-8">
                             <h1 className="text-xl font-bold text-gray-900">User Dashboard</h1>
+                            <div className="hidden md:block">
+                                <div className="ml-10 flex items-baseline space-x-4">
+                                    <a href="/dashboard" className="bg-gray-900 text-white px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
+                                    <a href="/dashboard/documents" className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium text-gray-900">Documents</a>
+                                </div>
+                            </div>
                         </div>
                         <div className="flex items-center gap-4">
                             <span className="text-sm text-gray-600">
@@ -204,6 +211,15 @@ export default function DashboardPage() {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                {/* Added YouTubeSummarizer component */}
+                <div className="mb-8">
+                    <h2 className="text-2xl font-bold text-gray-900">YouTube Summarizer</h2>
+                    <p className="mt-1 text-sm text-gray-500">Summarize YouTube videos quickly.</p>
+                    <div className="mt-4">
+                        <YouTubeSummarizer />
                     </div>
                 </div>
 
