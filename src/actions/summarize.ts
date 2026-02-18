@@ -1,7 +1,6 @@
 'use server';
 
 import Groq from 'groq-sdk';
-import { YoutubeTranscript } from 'youtube-transcript';
 
 // Lazily instantiated to avoid build-time errors when env vars are not yet available
 function getGroqClient() {
@@ -31,81 +30,55 @@ function extractVideoId(url: string): string | null {
     return null;
 }
 
-async function fetchTranscriptViaYouTubeTranscript(videoUrl: string): Promise<string> {
+/**
+ * Uses Supadata.ai API - a dedicated transcript service that bypasses YouTube's
+ * IP blocking of datacenter servers (like Vercel). Free tier: 100 req/month.
+ * Sign up at https://supadata.ai to get an API key.
+ */
+async function fetchTranscriptViaSupadata(videoId: string): Promise<string> {
+    const apiKey = process.env.SUPADATA_API_KEY;
+    if (!apiKey) throw new Error('SUPADATA_API_KEY not set');
+
+    const res = await fetch(
+        `https://api.supadata.ai/v1/youtube/transcript?videoId=${videoId}&text=true`,
+        {
+            headers: {
+                'x-api-key': apiKey,
+                'Content-Type': 'application/json',
+            },
+        }
+    );
+
+    if (!res.ok) {
+        const body = await res.text();
+        throw new Error(`Supadata API error ${res.status}: ${body.substring(0, 200)}`);
+    }
+
+    const data = await res.json();
+    // Supadata returns { content: string } when text=true
+    const text = data.content || data.text || '';
+    if (!text || text.trim().length === 0) throw new Error('Supadata returned empty transcript');
+    return text;
+}
+
+/**
+ * Fallback: youtube-transcript npm package
+ */
+async function fetchTranscriptViaLibrary(videoUrl: string): Promise<string> {
+    const { YoutubeTranscript } = await import('youtube-transcript');
     const items = await YoutubeTranscript.fetchTranscript(videoUrl, { lang: 'en' });
     if (!items || items.length === 0) throw new Error('Empty transcript returned');
-    return items.map(i => i.text).join(' ');
+    return items.map((i: any) => i.text).join(' ');
 }
 
-async function fetchTranscriptViaScraping(videoUrl: string): Promise<string> {
-    const response = await fetch(videoUrl, {
-        headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        }
-    });
-
-    if (!response.ok) throw new Error(`HTTP ${response.status} fetching video page`);
-    const html = await response.text();
-
-    // Try to find caption tracks in the page source
-    const captionTracksMatch = html.match(/"captionTracks":\s*(\[.*?\])/);
-    if (!captionTracksMatch) throw new Error('No caption tracks found in page source');
-
-    let captionTracks: any[];
-    try {
-        captionTracks = JSON.parse(captionTracksMatch[1]);
-    } catch {
-        throw new Error('Failed to parse caption tracks JSON');
-    }
-
-    if (!captionTracks.length) throw new Error('Caption tracks array is empty');
-
-    // Prefer: manual English > auto-generated English > any English > first available
-    const track =
-        captionTracks.find((t: any) => t.languageCode === 'en' && !t.kind) ||
-        captionTracks.find((t: any) => t.languageCode === 'en') ||
-        captionTracks.find((t: any) => t.languageCode?.startsWith('en')) ||
-        captionTracks[0];
-
-    if (!track?.baseUrl) throw new Error('No usable caption track found');
-
-    // Fetch the caption XML - try both the baseUrl and a cleaned version
-    const transcriptResponse = await fetch(track.baseUrl);
-    if (!transcriptResponse.ok) throw new Error(`Caption fetch failed: ${transcriptResponse.status}`);
-    const xml = await transcriptResponse.text();
-
-    function decodeHtmlEntities(str: string): string {
-        return str
-            .replace(/&amp;/g, '&')
-            .replace(/&lt;/g, '<')
-            .replace(/&gt;/g, '>')
-            .replace(/&quot;/g, '"')
-            .replace(/&#39;/g, "'")
-            .replace(/&apos;/g, "'")
-            .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code)))
-            .replace(/<[^>]+>/g, ''); // strip any inline tags
-    }
-
-    const texts: string[] = [];
-    const regex = /<text[^>]*>([\s\S]*?)<\/text>/g;
-    let m;
-    while ((m = regex.exec(xml)) !== null) {
-        const decoded = decodeHtmlEntities(m[1]).trim();
-        if (decoded) texts.push(decoded);
-    }
-
-    if (texts.length === 0) throw new Error('Parsed empty transcript from XML');
-    return texts.join(' ');
-}
-
+/**
+ * Fallback: YouTube's internal timedtext JSON3 API
+ */
 async function fetchTranscriptViaTimedText(videoId: string): Promise<string> {
-    // YouTube's internal timedtext API - works for most public videos with captions
-    const langs = ['en', 'en-US', 'en-GB', 'a.en']; // 'a.en' = auto-generated English
+    const langs = ['en', 'en-US', 'a.en'];
     for (const lang of langs) {
         try {
-            const url = `https://www.youtube.com/api/timedtext?lang=${lang}&v=${videoId}&fmt=json3&xorb=2&xobt=3&xovt=3`;
+            const url = `https://www.youtube.com/api/timedtext?lang=${lang}&v=${videoId}&fmt=json3`;
             const res = await fetch(url, {
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -126,39 +99,7 @@ async function fetchTranscriptViaTimedText(videoId: string): Promise<string> {
             continue;
         }
     }
-    throw new Error('timedtext API returned no results for any language variant');
-}
-
-
-async function fetchTranscriptViaYouTubeDataAPI(videoId: string): Promise<string> {
-    const apiKey = process.env.YOUTUBE_API_KEY;
-    if (!apiKey) throw new Error('YOUTUBE_API_KEY not set');
-
-    // Get caption list
-    const listRes = await fetch(
-        `https://www.googleapis.com/youtube/v3/captions?part=snippet&videoId=${videoId}&key=${apiKey}`
-    );
-    const listData = await listRes.json();
-    if (!listData.items?.length) throw new Error('No captions found via YouTube Data API');
-
-    const enCaption = listData.items.find((c: any) => c.snippet.language === 'en') || listData.items[0];
-    const captionId = enCaption.id;
-
-    // Download caption track (requires OAuth for non-ASR tracks, but ASR/auto-generated work with API key)
-    const downloadRes = await fetch(
-        `https://www.googleapis.com/youtube/v3/captions/${captionId}?tfmt=srt&key=${apiKey}`
-    );
-    if (!downloadRes.ok) throw new Error(`Caption download failed: ${downloadRes.status}`);
-    const srt = await downloadRes.text();
-
-    // Strip SRT formatting
-    const text = srt
-        .replace(/\d+\n\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}\n/g, '')
-        .replace(/<[^>]+>/g, '')
-        .replace(/\n\n/g, ' ')
-        .trim();
-
-    return text;
+    throw new Error('timedtext API returned no results');
 }
 
 async function generateSummaryWithGroq(transcript: string): Promise<{ summary: string; studyNotes: string }> {
@@ -210,34 +151,40 @@ export async function summarizeVideo(videoUrl: string, manualTranscript?: string
         } else {
             const videoId = extractVideoId(videoUrl);
             if (!videoId) {
-                return { summary: '', studyNotes: '', error: 'Invalid YouTube URL. Please use a standard youtube.com/watch?v= or youtu.be/ link.' };
+                return {
+                    summary: '',
+                    studyNotes: '',
+                    error: 'Invalid YouTube URL. Supported formats: youtube.com/watch?v=..., youtu.be/..., youtube.com/shorts/...'
+                };
             }
 
             const errors: string[] = [];
 
-            // Method 1: youtube-transcript library (fastest)
-            try {
-                console.log('Trying youtube-transcript...');
-                fullTranscript = await fetchTranscriptViaYouTubeTranscript(videoUrl);
-                console.log('✅ youtube-transcript succeeded.');
-            } catch (e: any) {
-                errors.push(`youtube-transcript: ${e.message}`);
-                console.warn('youtube-transcript failed:', e.message);
-            }
-
-            // Method 2: Manual HTML scraping
-            if (!fullTranscript) {
+            // Method 1: Supadata API (most reliable - bypasses YouTube IP blocks)
+            if (process.env.SUPADATA_API_KEY) {
                 try {
-                    console.log('Trying manual scraping...');
-                    fullTranscript = await fetchTranscriptViaScraping(videoUrl);
-                    console.log('✅ Manual scraping succeeded.');
+                    console.log('Trying Supadata API...');
+                    fullTranscript = await fetchTranscriptViaSupadata(videoId);
+                    console.log('✅ Supadata succeeded.');
                 } catch (e: any) {
-                    errors.push(`scraping: ${e.message}`);
-                    console.warn('Manual scraping failed:', e.message);
+                    errors.push(`Supadata: ${e.message}`);
+                    console.warn('Supadata failed:', e.message);
                 }
             }
 
-            // Method 3: YouTube timedtext API (internal JSON3 API, works for auto-generated captions)
+            // Method 2: youtube-transcript library
+            if (!fullTranscript) {
+                try {
+                    console.log('Trying youtube-transcript library...');
+                    fullTranscript = await fetchTranscriptViaLibrary(videoUrl);
+                    console.log('✅ youtube-transcript succeeded.');
+                } catch (e: any) {
+                    errors.push(`youtube-transcript: ${e.message}`);
+                    console.warn('youtube-transcript failed:', e.message);
+                }
+            }
+
+            // Method 3: YouTube timedtext API
             if (!fullTranscript) {
                 try {
                     console.log('Trying timedtext API...');
@@ -249,23 +196,11 @@ export async function summarizeVideo(videoUrl: string, manualTranscript?: string
                 }
             }
 
-            // Method 4: YouTube Data API v3 (if key is available)
-            if (!fullTranscript && process.env.YOUTUBE_API_KEY) {
-                try {
-                    console.log('Trying YouTube Data API...');
-                    fullTranscript = await fetchTranscriptViaYouTubeDataAPI(videoId);
-                    console.log('✅ YouTube Data API succeeded.');
-                } catch (e: any) {
-                    errors.push(`YouTube Data API: ${e.message}`);
-                    console.warn('YouTube Data API failed:', e.message);
-                }
-            }
-
             if (!fullTranscript) {
                 return {
                     summary: '',
                     studyNotes: '',
-                    error: `Transcript failed: Could not retrieve captions automatically. This video may have captions disabled or be restricted.\n\nDetails: ${errors.join('; ')}\n\nTip: Click "Having trouble?" above to paste the transcript manually.`,
+                    error: `Could not retrieve captions for this video. This usually happens because:\n• The video has captions disabled\n• YouTube is blocking automated access\n\nDetails: ${errors.join('; ')}\n\nTip: Click "Having trouble?" above to paste the transcript manually (YouTube → video → "..." → Show transcript → copy all).`,
                 };
             }
         }
