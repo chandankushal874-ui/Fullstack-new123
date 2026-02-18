@@ -215,6 +215,54 @@ export default function DashboardPage() {
                     </div>
                 </div>
 
+                {/* AI Tools Section */}
+                <div className="mb-8">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-4">AI Tools</h2>
+                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                        {/* Workspace Card */}
+                        <a href="/workspace" className="block group">
+                            <div className="overflow-hidden rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-200 p-6 text-white">
+                                <div className="flex items-center gap-4 mb-3">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-white/20">
+                                        <svg className="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-bold">Document Workspace</h3>
+                                        <p className="text-blue-100 text-sm">Upload PDFs &amp; Chat with AI</p>
+                                    </div>
+                                </div>
+                                <p className="text-blue-100 text-sm mb-4">Upload your documents, ask questions, and get instant AI-powered answers from your files.</p>
+                                <span className="inline-flex items-center gap-1 text-sm font-semibold text-white group-hover:gap-2 transition-all">
+                                    Open Workspaces →
+                                </span>
+                            </div>
+                        </a>
+
+                        {/* Deep Research Card */}
+                        <a href="/workspace" className="block group">
+                            <div className="overflow-hidden rounded-xl bg-gradient-to-br from-purple-600 to-pink-700 shadow-lg hover:shadow-xl transition-all duration-200 p-6 text-white">
+                                <div className="flex items-center gap-4 mb-3">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-white/20">
+                                        <svg className="h-7 w-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-bold">Deep Research</h3>
+                                        <p className="text-purple-100 text-sm">AI + Live Web Search</p>
+                                    </div>
+                                </div>
+                                <p className="text-purple-100 text-sm mb-4">Enable Deep Search in any workspace to combine your documents with live web results for comprehensive answers.</p>
+                                <span className="inline-flex items-center gap-1 text-sm font-semibold text-white group-hover:gap-2 transition-all">
+                                    Start Researching →
+                                </span>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
                 {/* Added YouTubeSummarizer component */}
                 <div className="mb-8">
                     <h2 className="text-2xl font-bold text-gray-900">YouTube Summarizer</h2>
