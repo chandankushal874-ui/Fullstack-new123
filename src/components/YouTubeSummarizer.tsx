@@ -125,25 +125,45 @@ export default function YouTubeSummarizer() {
             {(summary || studyNotes) && (
                 <div className="space-y-6 animate-in fade-in duration-500">
                     {summary && (
-                        <div className="bg-blue-50 p-6 rounded-lg border border-blue-100">
-                            <div className="flex items-center gap-2 mb-3 text-blue-800">
-                                <FileText className="w-5 h-5" />
-                                <h3 className="font-semibold text-lg">Video Summary</h3>
+                        <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
+                            <div className="flex items-center gap-2 mb-3">
+                                <FileText className="w-5 h-5 text-blue-900" />
+                                <h3 className="font-extrabold text-lg text-gray-950">Video Summary</h3>
                             </div>
-                            <p className="text-gray-800 leading-relaxed text-sm lg:text-base">
+                            <p className="text-gray-950 font-semibold leading-relaxed text-sm lg:text-base">
                                 {summary}
                             </p>
                         </div>
                     )}
 
                     {studyNotes && (
-                        <div className="bg-green-50 p-6 rounded-lg border border-green-100">
-                            <div className="flex items-center gap-2 mb-3 text-green-800">
-                                <BookOpen className="w-5 h-5" />
-                                <h3 className="font-semibold text-lg">Study Notes</h3>
+                        <div className="bg-green-50 p-6 rounded-lg border border-green-200">
+                            <div className="flex items-center gap-2 mb-3">
+                                <BookOpen className="w-5 h-5 text-green-900" />
+                                <h3 className="font-extrabold text-lg text-gray-950">Study Notes</h3>
                             </div>
-                            <div className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-headings:font-extrabold prose-p:text-gray-900 prose-p:font-medium prose-li:text-gray-900 prose-li:font-medium prose-strong:text-gray-900 prose-strong:font-black">
-                                <ReactMarkdown>{studyNotes}</ReactMarkdown>
+                            <div
+                                className="text-gray-950 font-semibold text-sm lg:text-base leading-relaxed"
+                                style={{
+                                    color: '#030712',
+                                    fontWeight: 600,
+                                }}
+                            >
+                                <ReactMarkdown
+                                    components={{
+                                        h1: ({ children }) => <h1 style={{ color: '#030712', fontWeight: 800, fontSize: '1.2rem', marginBottom: '0.5rem', marginTop: '1rem' }}>{children}</h1>,
+                                        h2: ({ children }) => <h2 style={{ color: '#030712', fontWeight: 800, fontSize: '1.1rem', marginBottom: '0.4rem', marginTop: '0.8rem' }}>{children}</h2>,
+                                        h3: ({ children }) => <h3 style={{ color: '#030712', fontWeight: 700, fontSize: '1rem', marginBottom: '0.3rem', marginTop: '0.6rem' }}>{children}</h3>,
+                                        p: ({ children }) => <p style={{ color: '#111827', fontWeight: 600, marginBottom: '0.5rem' }}>{children}</p>,
+                                        li: ({ children }) => <li style={{ color: '#111827', fontWeight: 600, marginBottom: '0.2rem' }}>{children}</li>,
+                                        ul: ({ children }) => <ul style={{ listStyleType: 'disc', paddingLeft: '1.5rem', marginBottom: '0.5rem' }}>{children}</ul>,
+                                        ol: ({ children }) => <ol style={{ listStyleType: 'decimal', paddingLeft: '1.5rem', marginBottom: '0.5rem' }}>{children}</ol>,
+                                        strong: ({ children }) => <strong style={{ color: '#030712', fontWeight: 900 }}>{children}</strong>,
+                                        em: ({ children }) => <em style={{ color: '#111827', fontWeight: 600 }}>{children}</em>,
+                                    }}
+                                >
+                                    {studyNotes}
+                                </ReactMarkdown>
                             </div>
                         </div>
                     )}

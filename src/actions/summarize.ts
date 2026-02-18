@@ -102,19 +102,20 @@ async function fetchTranscriptViaTimedText(videoId: string): Promise<string> {
     throw new Error('timedtext API returned no results');
 }
 
-async function generateSummaryWithGroq(transcript: string): Promise<{ summary: string; studyNotes: string }> {
+async function generateSummaryWithGroq(transcript: string, videoUrl?: string): Promise<{ summary: string; studyNotes: string }> {
     const groq = getGroqClient();
     const truncated = transcript.length > 40000 ? transcript.substring(0, 40000) + '...' : transcript;
+    const videoContext = videoUrl ? `\nVideo URL: ${videoUrl}\nNote: Use the URL and transcript to identify the video title, artist, or topic if possible.` : '';
 
     const completion = await groq.chat.completions.create({
         messages: [{
             role: 'user',
-            content: `You are an expert AI study assistant. Here is the transcript of a YouTube video:
+            content: `You are an expert AI study assistant. Here is the transcript of a YouTube video:${videoContext}
 
 "${truncated}"
 
 Please provide TWO things:
-1. A concise Summary of the video (2-3 paragraphs).
+1. A concise Summary of the video (2-3 paragraphs). Start by identifying what the video is (e.g. song name, artist, topic, channel) if you can determine it.
 2. Detailed Study Notes in Markdown format. Use bullet points, bold text for key terms, and headers.
 
 Return your response in JSON format like this:
@@ -206,7 +207,7 @@ export async function summarizeVideo(videoUrl: string, manualTranscript?: string
         }
 
         // Generate summary with Groq
-        const { summary, studyNotes } = await generateSummaryWithGroq(fullTranscript);
+        const { summary, studyNotes } = await generateSummaryWithGroq(fullTranscript, videoUrl);
         return { summary, studyNotes };
 
     } catch (error: any) {
