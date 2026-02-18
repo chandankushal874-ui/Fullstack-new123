@@ -3,7 +3,10 @@
 import Groq from 'groq-sdk';
 import { YoutubeTranscript } from 'youtube-transcript';
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+// Lazily instantiated to avoid build-time errors when env vars are not yet available
+function getGroqClient() {
+    return new Groq({ apiKey: process.env.GROQ_API_KEY });
+}
 
 interface SummaryResult {
     summary: string;
@@ -112,6 +115,7 @@ async function fetchTranscriptViaYouTubeDataAPI(videoId: string): Promise<string
 }
 
 async function generateSummaryWithGroq(transcript: string): Promise<{ summary: string; studyNotes: string }> {
+    const groq = getGroqClient();
     const truncated = transcript.length > 40000 ? transcript.substring(0, 40000) + '...' : transcript;
 
     const completion = await groq.chat.completions.create({

@@ -6,10 +6,16 @@ import Groq from "groq-sdk";
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+// Lazy clients - instantiated at request time, not build time
+function getGroqClient() {
+    return new Groq({ apiKey: process.env.GROQ_API_KEY });
+}
+function getGeminiModel() {
+    return new GoogleGenerativeAI(process.env.GEMINI_API_KEY!).getGenerativeModel({ model: "gemini-2.0-flash" });
+}
 
 async function generateWithGroq(prompt: string): Promise<string> {
+    const groq = getGroqClient();
     const completion = await groq.chat.completions.create({
         messages: [{ role: "user", content: prompt }],
         model: "llama-3.3-70b-versatile",
@@ -19,7 +25,7 @@ async function generateWithGroq(prompt: string): Promise<string> {
 }
 
 async function generateWithGemini(prompt: string): Promise<string> {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = getGeminiModel();
     const result = await model.generateContent(prompt);
     return result.response.text();
 }
