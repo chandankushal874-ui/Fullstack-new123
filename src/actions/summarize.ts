@@ -53,35 +53,82 @@ async function fetchTranscriptViaScraping(videoUrl: string): Promise<string> {
     const captionTracksMatch = html.match(/"captionTracks":\s*(\[.*?\])/);
     if (!captionTracksMatch) throw new Error('No caption tracks found in page source');
 
-    const captionTracks = JSON.parse(captionTracksMatch[1]);
-    // Prefer English, then any available track
-    const track = captionTracks.find((t: any) => t.languageCode === 'en') ||
+    let captionTracks: any[];
+    try {
+        captionTracks = JSON.parse(captionTracksMatch[1]);
+    } catch {
+        throw new Error('Failed to parse caption tracks JSON');
+    }
+
+    if (!captionTracks.length) throw new Error('Caption tracks array is empty');
+
+    // Prefer: manual English > auto-generated English > any English > first available
+    const track =
+        captionTracks.find((t: any) => t.languageCode === 'en' && !t.kind) ||
+        captionTracks.find((t: any) => t.languageCode === 'en') ||
         captionTracks.find((t: any) => t.languageCode?.startsWith('en')) ||
         captionTracks[0];
 
     if (!track?.baseUrl) throw new Error('No usable caption track found');
 
+    // Fetch the caption XML - try both the baseUrl and a cleaned version
     const transcriptResponse = await fetch(track.baseUrl);
+    if (!transcriptResponse.ok) throw new Error(`Caption fetch failed: ${transcriptResponse.status}`);
     const xml = await transcriptResponse.text();
 
+    function decodeHtmlEntities(str: string): string {
+        return str
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'")
+            .replace(/&apos;/g, "'")
+            .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code)))
+            .replace(/<[^>]+>/g, ''); // strip any inline tags
+    }
+
     const texts: string[] = [];
-    const regex = /<text[^>]*>(.*?)<\/text>/g;
+    const regex = /<text[^>]*>([\s\S]*?)<\/text>/g;
     let m;
     while ((m = regex.exec(xml)) !== null) {
-        texts.push(
-            m[1]
-                .replace(/&amp;/g, '&')
-                .replace(/&lt;/g, '<')
-                .replace(/&gt;/g, '>')
-                .replace(/&quot;/g, '"')
-                .replace(/&#39;/g, "'")
-                .replace(/<[^>]+>/g, '')
-        );
+        const decoded = decodeHtmlEntities(m[1]).trim();
+        if (decoded) texts.push(decoded);
     }
 
     if (texts.length === 0) throw new Error('Parsed empty transcript from XML');
     return texts.join(' ');
 }
+
+async function fetchTranscriptViaTimedText(videoId: string): Promise<string> {
+    // YouTube's internal timedtext API - works for most public videos with captions
+    const langs = ['en', 'en-US', 'en-GB', 'a.en']; // 'a.en' = auto-generated English
+    for (const lang of langs) {
+        try {
+            const url = `https://www.youtube.com/api/timedtext?lang=${lang}&v=${videoId}&fmt=json3&xorb=2&xobt=3&xovt=3`;
+            const res = await fetch(url, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                }
+            });
+            if (!res.ok) continue;
+            const data = await res.json();
+            if (!data.events?.length) continue;
+
+            const texts = data.events
+                .filter((e: any) => e.segs)
+                .flatMap((e: any) => e.segs.map((s: any) => s.utf8 || ''))
+                .filter((t: string) => t.trim() && t !== '\n');
+
+            if (texts.length > 0) return texts.join(' ');
+        } catch {
+            continue;
+        }
+    }
+    throw new Error('timedtext API returned no results for any language variant');
+}
+
 
 async function fetchTranscriptViaYouTubeDataAPI(videoId: string): Promise<string> {
     const apiKey = process.env.YOUTUBE_API_KEY;
@@ -190,7 +237,19 @@ export async function summarizeVideo(videoUrl: string, manualTranscript?: string
                 }
             }
 
-            // Method 3: YouTube Data API v3 (if key is available)
+            // Method 3: YouTube timedtext API (internal JSON3 API, works for auto-generated captions)
+            if (!fullTranscript) {
+                try {
+                    console.log('Trying timedtext API...');
+                    fullTranscript = await fetchTranscriptViaTimedText(videoId);
+                    console.log('✅ Timedtext API succeeded.');
+                } catch (e: any) {
+                    errors.push(`timedtext: ${e.message}`);
+                    console.warn('Timedtext API failed:', e.message);
+                }
+            }
+
+            // Method 4: YouTube Data API v3 (if key is available)
             if (!fullTranscript && process.env.YOUTUBE_API_KEY) {
                 try {
                     console.log('Trying YouTube Data API...');
