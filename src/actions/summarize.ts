@@ -12,8 +12,20 @@ interface SummaryResult {
 }
 
 function extractVideoId(url: string): string | null {
-    const match = url.match(/(?:youtu\.be\/|youtube\.com(?:\/embed\/|\/v\/|\/watch\?v=|\/shorts\/))([\\w-]{11})/);
-    return match ? match[1] : null;
+    // Handle all YouTube URL formats including mobile, shorts, embed, and bare IDs
+    const patterns = [
+        /(?:https?:\/\/)?(?:www\.|m\.)?youtube\.com\/watch\?(?:.*&)?v=([\w-]{11})/,
+        /(?:https?:\/\/)?(?:www\.)?youtu\.be\/([\w-]{11})/,
+        /(?:https?:\/\/)?(?:www\.|m\.)?youtube\.com\/shorts\/([\w-]{11})/,
+        /(?:https?:\/\/)?(?:www\.|m\.)?youtube\.com\/embed\/([\w-]{11})/,
+        /(?:https?:\/\/)?(?:www\.|m\.)?youtube\.com\/v\/([\w-]{11})/,
+        /^([\w-]{11})$/, // bare video ID
+    ];
+    for (const pattern of patterns) {
+        const match = url.trim().match(pattern);
+        if (match) return match[1];
+    }
+    return null;
 }
 
 async function fetchTranscriptViaYouTubeTranscript(videoUrl: string): Promise<string> {

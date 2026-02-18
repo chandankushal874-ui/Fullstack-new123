@@ -55,12 +55,12 @@ export default function YouTubeSummarizer() {
             <form onSubmit={handleSubmit} className="mb-6">
                 <div className="flex gap-4 mb-4">
                     <input
-                        type="url"
-                        placeholder="https://www.youtube.com/watch?v=..."
+                        type="text"
+                        placeholder="Paste any YouTube link (youtube.com, youtu.be, shorts, etc.)"
                         value={url}
                         onChange={(e) => setUrl(e.target.value)}
                         required
-                        className="flex-1 rounded-md border border-gray-300 px-4 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
+                        className="flex-1 rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-900 font-medium focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all"
                     />
                     <button
                         type="submit"
@@ -142,7 +142,7 @@ export default function YouTubeSummarizer() {
                                 <BookOpen className="w-5 h-5" />
                                 <h3 className="font-semibold text-lg">Study Notes</h3>
                             </div>
-                            <div className="prose prose-sm max-w-none prose-headings:text-green-900 prose-p:text-gray-800 prose-li:text-gray-800">
+                            <div className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-headings:font-extrabold prose-p:text-gray-900 prose-p:font-medium prose-li:text-gray-900 prose-li:font-medium prose-strong:text-gray-900 prose-strong:font-black">
                                 <ReactMarkdown>{studyNotes}</ReactMarkdown>
                             </div>
                         </div>
