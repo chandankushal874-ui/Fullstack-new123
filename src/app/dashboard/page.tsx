@@ -99,7 +99,8 @@ export default function DashboardPage() {
                             <div className="hidden md:block">
                                 <div className="ml-10 flex items-baseline space-x-4">
                                     <a href="/dashboard" className="bg-gray-900 text-white px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
-                                    <a href="/dashboard/documents" className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium text-gray-900">Documents</a>
+                                    <a href="/workspace" className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium text-gray-900">Workspaces</a>
+                                    <a href="/dashboard/documents" className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium text-gray-900">Legacy Documents</a>
                                 </div>
                             </div>
                         </div>

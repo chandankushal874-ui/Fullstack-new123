@@ -12,6 +12,7 @@
     "@distube/ytdl-core": "^4.16.12",
     "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^5.2.2",
+    "@prisma/client": "5.10.2",
     "axios": "^1.13.5",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
@@ -33,7 +34,6 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@prisma/client": "^5.10.2",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/pdf-parse": "^1.1.5",
